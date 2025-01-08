@@ -10,7 +10,10 @@ git clone https://github.com/nelsondev2/Trans-Voice.git
 ```sh
 cd Trans-Voice
 ```
-
+## Instalar las dependencias:
+```python
+pip install -r requeriments.txt
+```
 ## Inicializa el bot con el correo y la contraseña a usar:
 ```python
 python transvoice.py init correo@example.com password
