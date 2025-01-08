@@ -1,25 +1,30 @@
-# Trans-Voice
+## Trans-Voice
 Bot para Deltachat usando deltabot-cli con el cual puedes traducir texto y convertir texto a voz en múltiples idiomas 
 
-##clona el repositorio:
+## clona el repositorio:
 ```sh
-git clone https://github.com/nelsondev2/Trans-Voice```
+git clone https://github.com/nelsondev2/Trans-Voice
+```
 
-##Accede a la carpeta clonada:
+## Accede a la carpeta clonada:
 ```sh
-cd Trans-Voice```
+cd Trans-Voice
+```
 
-##Inicializa el bot con el correo y la contraseña a usar:
+## Inicializa el bot con el correo y la contraseña a usar:
 ```python
-python transvoice.py init correo@example.com password```
+python transvoice.py init correo@example.com password
+```
 
-##Obtener el qr con el que abrira el bot en Deltachat
+## Obtener el qr con el que abrira el bot en Deltachat
 ```python
-python transvoice.py qr```
+python transvoice.py qr
+```
 
-##Iniciar el bot:
+## Iniciar el bot:
 ```python
-python transvoice.py serve```
+python transvoice.py serve
+```
 
 
 
