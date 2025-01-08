@@ -3,7 +3,7 @@ Bot para Deltachat usando deltabot-cli con el cual puedes traducir texto y conve
 
 ## clona el repositorio:
 ```sh
-git clone https://github.com/nelsondev2/Trans-Voice
+git clone https://github.com/nelsondev2/Trans-Voice.git
 ```
 
 ## Accede a la carpeta clonada:
