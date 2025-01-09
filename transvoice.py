@@ -1,59 +1,16 @@
-from deltachat2 import MsgData, events, Bot, AttrDict
+from argparse import Namespace
+from deltachat2 import Bot, ChatType, CoreEvent, EventType, MsgData, NewMsgEvent, events, AttrDict
+from rich.logging import RichHandler
 from deltabot_cli import BotCli
 from gtts import gTTS
 from googletrans import Translator
 import os
 
-cli = BotCli("multibot")
+cli = BotCli("transvoice")
 
-@cli.on(events.NewMessage(command="/tts"))
-def traductorpro(bot, accid, event):  # < Traduce a Voz >
-    msg = event.msg
-    translator = Translator()  # Crea un objeto de la clase Translator
-    
-    try:
-        # Valida que el formato del comando sea correcto
-        if len(msg.text.split()) < 3:
-            bot.rpc.send_msg(accid, msg.chat_id, MsgData(text="Por favor usa el formato correcto: /tts [lenguaje] [texto]"))
-            return
-        
-        lang, text = msg.text[5:].split(' ', 1)  # Define la palabra o texto a traducir
-        traduccion = translator.translate(text, dest=lang)  # Traduce el texto al idioma deseado
-        tts = gTTS(traduccion.text, lang=lang)  # Convertimos el texto traducido a voz en el mismo idioma designado
-        tts.save("text_to_speech.mp3")  # Guardamos en formato .mp3
-        
-        bot.rpc.send_msg(accid, msg.chat_id, MsgData(file="text_to_speech.mp3"))
-    except Exception as e:
-        bot.rpc.send_msg(accid, msg.chat_id, MsgData(text=f"Ocurrió un error: {str(e)}"))
-    finally:
-        if os.path.exists("text_to_speech.mp3"):
-            os.remove("text_to_speech.mp3")  # Borramos el audio
+HELP ="Bot para traducir y Convertir texto a voz en múltiples idiomas"
 
-
-from googletrans import Translator
-
-@cli.on(events.NewMessage(command="/tr"))
-def traductor(bot, accid, event):
-    msg = event.msg
-    translator = Translator()  # Crea un objeto de la clase Translator
-    
-    try:
-        # Valida que el formato del comando sea correcto
-        if len(msg.text.split()) < 3:
-            bot.rpc.send_msg(accid, msg.chat_id, MsgData(text="Por favor usa el formato correcto: /tr [lenguaje] [texto]"))
-            return
-
-        lang, text = msg.text[4:].split(' ', 1)  # Define la palabra o texto a traducir
-        traduccion = translator.translate(text, dest=lang)  # Traduce el texto al idioma deseado
-        bot.rpc.send_msg(accid, msg.chat_id, MsgData(text=traduccion.text))
-    except Exception as e:
-        bot.rpc.send_msg(accid, msg.chat_id, MsgData(text=f"Ocurrió un error: {str(e)}"))
-
-
-@cli.on(events.NewMessage(command="/langs"))
-def langs(bot, accid, event):
-    msg=event.msg
-    list ="""
+list ="""
     <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -61,29 +18,29 @@ def langs(bot, accid, event):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lista de Idiomas</title>
     <style>
-        body { 
+        body {
             font-family: Arial, sans-serif;
-            margin: 20px; 
+            margin: 20px;
             background-color: #f9f9f9;
-                   } 
-        h1 { 
+                   }
+        h1 {
             text-align: center; color: #333;
-               } 
-       ul { 
-            list-style-type: none; 
-            padding: 0; 
-            text-align: center; 
-             } 
-       li { 
-             background-color: #fff; 
-             margin: 5px 0; 
-             padding: 10px; 
+               }
+       ul {
+            list-style-type: none;
+            padding: 0;
+            text-align: center;
+             }
+       li {
+             background-color: #fff;
+             margin: 5px 0;
+             padding: 10px;
              border: 1px solid #ddd;
-             border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+             border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
              display: inline-block; width: 200px;
-             } 
-        li span { 
-             font-weight: bold; 
+             }
+        li span {
+             font-weight: bold;
              }
     </style>
 </head>
@@ -279,13 +236,77 @@ def langs(bot, accid, event):
 </html>
 
     """
-    bot.rpc.send_msg(accid, msg.chat_id,
-                     MsgData(text="Listado de idiomas",html=list))
 
+# Función para enviar mensajes y manejar errores
+def send_message(bot, accid, chat_id, text=None, file=None, html=None):
+    try:
+        bot.rpc.send_msg(accid, chat_id, MsgData(text=text, file=file, html=html))
+    except Exception as e:
+        bot.rpc.send_msg(accid, chat_id, MsgData(text=f"Ocurrió un error: {str(e)}"))
+
+@cli.on_init
+def on_init(bot: Bot, args: Namespace) -> None:
+    for accid in bot.rpc.get_all_account_ids():
+        if not bot.rpc.get_config(accid, "displayname"):
+            bot.rpc.set_config(accid, "displayname", "TransVoice")
+            bot.rpc.set_config(accid, "selfstatus", HELP)
+            bot.rpc.set_config(accid, "delete_device_after", str(60 * 60 * 24))
+
+@cli.on(events.NewMessage(command="/tts"))
+def traductor_pro(bot, accid, event):  
+    handle_translation(bot, accid, event, convert_to_speech=True)
+
+@cli.on(events.NewMessage(command="/tr"))
+def traductor(bot, accid, event):
+    handle_translation(bot, accid, event, convert_to_speech=False)
+
+def handle_translation(bot, accid, event, convert_to_speech=False):
+    msg = event.msg
+    chat = bot.rpc.get_basic_chat_info(accid, msg.chat_id)
+    if chat.chat_type == ChatType.SINGLE:
+        bot.rpc.markseen_msgs(accid, [msg.id])
+    bot.rpc.send_reaction(accid, msg.id, ["⏳"])
+    translator = Translator()
+
+    try:
+        if len(msg.text.split()) < 3:
+            send_message(bot, accid, msg.chat_id, "Por favor usa el formato correcto: /tts [lenguaje] [texto]")
+            bot.rpc.send_reaction(accid, msg.id, [])
+            return
+
+        lang = msg.text.split()[1]
+        text = ' '.join(msg.text.split()[2:])
+        traduccion = translator.translate(text, dest=lang)
+        
+        if convert_to_speech:
+            tts = gTTS(traduccion.text, lang=lang)
+            tts.save("text_to_speech.mp3")
+            send_message(bot, accid, msg.chat_id, file="text_to_speech.mp3")
+            os.remove("text_to_speech.mp3")
+        else:
+            send_message(bot, accid, msg.chat_id, traduccion.text)
+
+        bot.rpc.send_reaction(accid, msg.id, [])
+    except Exception as e:
+        send_message(bot, accid, msg.chat_id, f"Ocurrió un error: {str(e)}")
+        bot.rpc.send_reaction(accid, msg.id, [])
+
+@cli.on(events.NewMessage(command="/langs"))
+def langs(bot, accid, event):
+    msg = event.msg
+    chat = bot.rpc.get_basic_chat_info(accid, msg.chat_id)
+    if chat.chat_type == ChatType.SINGLE:
+        bot.rpc.markseen_msgs(accid, [msg.id])
+    # Aquí se enviaría el mensaje con la lista de idiomas disponibles (cuando la agregues)
+    send_message(bot, accid, msg.chat_id, text="Listado de idiomas disponible",html=list)
 
 @cli.on(events.NewMessage(command="/help"))
 def _help(bot: Bot, accid: int, event: AttrDict) -> None:
-    send_help(bot, accid, event.msg.chat_id  )
+    msg = event.msg
+    chat = bot.rpc.get_basic_chat_info(accid, msg.chat_id)
+    if chat.chat_type == ChatType.SINGLE:
+        bot.rpc.markseen_msgs(accid, [msg.id])
+    send_help(bot, accid, event.msg.chat_id)
 
 def send_help(bot: Bot, accid: int, chat_id: int) -> None:
     texto = """
@@ -294,9 +315,10 @@ def send_help(bot: Bot, accid: int, chat_id: int) -> None:
     **/tts** [lenguaje] [texto] - Convertir texto a voz
     **/tr**  [lenguaje] [texto] - Traducir texto a diferentes idiomas
     **/langs** - Listado de idiomas disponibles
+    **/help** - Mostrar los comandos disponibles
     """
-    bot.rpc.send_msg(accid, chat_id, MsgData(text=texto))
-
+    send_message(bot, accid, chat_id, texto)
 
 if __name__ == "__main__":
   cli.start()
+
